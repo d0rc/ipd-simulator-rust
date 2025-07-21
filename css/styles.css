@@ -1,0 +1,309 @@
+/* Global styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background-color: #f0f0f0;
+    color: #333;
+    overflow-x: hidden;
+}
+
+/* Main container */
+.global_div {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+}
+
+.story_div {
+    width: 100%;
+    max-width: 1400px;
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+/* Panel styles for story images */
+.panel1, .panel2, .panel3, .panel4 {
+    display: none; /* Hide story panels for now */
+}
+
+/* Main simulator container */
+.main_simulator_div {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Playback controls */
+#playbackcontrols {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    position: relative;
+}
+
+#playbackcontrols button {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#playbackcontrols button:hover {
+    background-color: #45a049;
+}
+
+#playbackcontrols button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+#slider {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #ddd;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+#slider:hover {
+    opacity: 1;
+}
+
+#slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #4CAF50;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+#slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #4CAF50;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+/* Settings button */
+.icon-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #666;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.icon-btn:hover {
+    background-color: #555;
+}
+
+/* Info display */
+.info_div {
+    padding: 10px;
+    background-color: #e8f4f8;
+    border: 1px solid #b8d4e3;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.info_text {
+    font-size: 14px;
+    font-weight: bold;
+    color: #2c5aa0;
+}
+
+/* Canvas and colorbar container */
+.canvas_cbar_div {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    background-color: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow-x: auto; /* Allow horizontal scroll if needed */
+}
+
+.canvas_div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 620px; /* Account for border */
+    min-height: 620px;
+}
+
+#canvas {
+    border: 2px solid #333;
+    width: 600px;
+    height: 600px;
+    display: block;
+}
+
+.cbar_div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#canvas_colorbar {
+    border: 1px solid #ccc;
+}
+
+/* Graph container */
+.graph_div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 20px;
+    background-color: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+}
+
+.quadrant {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    height: 250px;
+}
+
+.quadrant canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Settings form */
+#form {
+    position: absolute;
+    top: 60px;
+    right: 0;
+    background-color: white;
+    border: 2px solid #333;
+    border-radius: 4px;
+    padding: 20px;
+    width: 350px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+#form h4 {
+    margin-bottom: 15px;
+    color: #2c5aa0;
+    border-bottom: 2px solid #2c5aa0;
+    padding-bottom: 5px;
+}
+
+#form label {
+    display: inline-block;
+    margin-bottom: 5px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+#form input[type="range"] {
+    width: 200px;
+    margin: 0 10px;
+}
+
+#form span {
+    display: inline-block;
+    width: 50px;
+    text-align: left;
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+/* Payoff table */
+#payofftable {
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+
+#payofftable td, #payofftable th {
+    padding: 5px;
+    text-align: center;
+}
+
+#payofftable input[type="number"] {
+    width: 40px !important;
+    padding: 2px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+}
+
+/* Form buttons */
+#submit, #resetbtn {
+    margin: 5px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#submit {
+    background-color: #4CAF50;
+    color: white;
+}
+
+#submit:hover {
+    background-color: #45a049;
+}
+
+#resetbtn {
+    background-color: #f44336;
+    color: white;
+}
+
+#resetbtn:hover {
+    background-color: #da190b;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .graph_div {
+        grid-template-columns: 1fr;
+    }
+    
+    .canvas_cbar_div {
+        flex-direction: column;
+    }
+}

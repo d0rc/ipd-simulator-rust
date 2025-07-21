@@ -1,0 +1,55 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/styles.css">
+    <title>IPD-ms</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+<body>
+    <!-- global div -->
+    <div class="global_div">
+        <!-- story div -->
+        <div class="story_div">
+            <div class="panel1">
+                <img src="./img/p1.png" alt="">
+                <div class="links">
+                    <a id="paper_link" href="https://ieeexplore.ieee.org/document/10970107">
+                        <img src="./img/paper.png" alt="" class="paper">
+                    </a>
+                    <a id="talk_link" href="https://www.youtube.com/watch?v=iOFHyNliS9M&ab_channel=MichaelLevin%27sAcademicContent">
+                        <img src="./img/talk.png" alt="" class="talk">
+                    </a>
+                </div> 
+                <img id="p1_lower_half" src="./img/p1-lower-half.png" alt="">
+            </div>
+            <div class="panel2">
+                <img src="./img/p2.png" alt="">
+            </div>
+            <div class="panel3">
+                <img src="./img/p3.png" alt="">
+            </div>
+            <div class="panel4">
+                <img src="./img/p3-2.png" alt="">
+            </div>
+            <!-- sim div (inject from js)-->    
+        </div>
+    </div>
+    <button type="button" class="icon-btn" id="dotsBtn">
+        <i class="fa fa-gear"></i>
+    </button>
+    <script>
+    window.onload = function() {
+        document.getElementById("dotsBtn").click();
+    };
+    </script>
+    <script id="simscript" src="./js/grid-copy.js" type="module"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+
+</html>

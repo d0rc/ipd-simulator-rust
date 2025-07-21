@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .info {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #2c5aa0;
+        }
+        .status {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .instructions {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>IPD Multi-Agent Simulation - Grid Test</h1>
+        <p class="status">✓ CSS file created successfully</p>
+        <p class="status">✓ Grid size slider updated to support 100x100</p>
+        <p class="status">✓ Dynamic canvas sizing implemented</p>
+        
+        <div class="instructions">
+            <h2>Testing Instructions:</h2>
+            <ol>
+                <li>Open <code>index.html</code> in your browser</li>
+                <li>Click the gear icon (⚙) to open settings</li>
+                <li>Drag the "Number of Agents" slider to see it goes up to 100x100 (10,000 agents)</li>
+                <li>Click "Apply" to update the grid size</li>
+                <li>Click the play button (▶) to start the simulation</li>
+            </ol>
+            
+            <h3>Key Improvements Made:</h3>
+            <ul>
+                <li><strong>Grid Size:</strong> Increased from 10x10 to 100x100 maximum</li>
+                <li><strong>Display:</strong> Shows grid dimensions (e.g., "50x50 (2500)")</li>
+                <li><strong>Canvas Scaling:</strong> Automatically adjusts pixel size based on grid size (max 600px canvas)</li>
+                <li><strong>Colorbar:</strong> Adjusts size for larger grids</li>
+                <li><strong>Technical UI:</strong> Clean monospace font, technical color scheme</li>
+            </ul>
+            
+            <h3>Performance Notes:</h3>
+            <p>With 100x100 grid (10,000 agents), the simulation may run slower due to:</p>
+            <ul>
+                <li>Q-learning calculations for each agent</li>
+                <li>Lanczos interpolation for smooth rendering</li>
+                <li>Real-time graph updates</li>
+            </ul>
+            <p>For optimal performance, try grid sizes between 20x20 and 50x50.</p>
+        </div>
+    </div>
+</body>
+</html>
