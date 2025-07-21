@@ -106,7 +106,6 @@ pub struct Grid {
     pub policy_table: PolicyTable,
     pub payoff_table: PayoffTable,
     pub deferred_ops: Arc<ArrayQueue<DeferredOp>>,
-    pub next_agent_id: u32,
     root_cache: Vec<u32>,
     
     // Q-learning parameters
@@ -137,7 +136,6 @@ impl Grid {
             policy_table: PolicyTable::new(10_000_000), // 10M policies
             payoff_table: PayoffTable::default(),
             deferred_ops: Arc::new(ArrayQueue::new(1_000_000)),
-            next_agent_id: total_agents as u32,
             root_cache: vec![0; total_agents],
             alpha: 0.2,
             gamma: 0.95,
@@ -497,20 +495,6 @@ impl Grid {
         }
         
         stats
-    }
-
-    /// Find empty cells on the grid
-    fn find_empty_cells(&self, count: usize) -> Vec<usize> {
-        let mut empty_cells = Vec::with_capacity(count);
-        for (i, is_active) in self.active_mask.iter().enumerate() {
-            if !*is_active {
-                empty_cells.push(i);
-                if empty_cells.len() == count {
-                    break;
-                }
-            }
-        }
-        empty_cells
     }
 }
 

@@ -3,10 +3,7 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use std::sync::Arc;
 use std::thread;
-use std::io::Write;
 
-#[cfg(feature = "video")]
-use image::{ImageBuffer, Rgb};
 #[cfg(feature = "video")]
 use crossbeam::channel::{bounded, Sender, Receiver};
 
@@ -338,71 +335,5 @@ impl VideoEncoder {
         }
         
         Ok(())
-    }
-}
-
-/// Simple renderer for preview without video encoding
-pub struct PreviewRenderer {
-    width: u32,
-    height: u32,
-}
-
-impl PreviewRenderer {
-    pub fn new(width: u32, height: u32) -> Self {
-        Self { width, height }
-    }
-    
-    pub fn render_to_buffer(&self, grid: &Grid) -> Vec<u8> {
-        let mut buffer = vec![0u8; (self.width * self.height * 4) as usize]; // RGBA
-        
-        let scale_x = self.width as f32 / grid.grid_width as f32;
-        let scale_y = self.height as f32 / grid.grid_height as f32;
-        
-        for y in 0..grid.grid_height {
-            for x in 0..grid.grid_width {
-                let idx = y * grid.grid_width + x;
-                let agent_idx = grid.find_root(idx);
-                
-                if agent_idx >= grid.agents.len() {
-                    continue;
-                }
-                
-                let agent = &grid.agents[agent_idx];
-                let (r, g, b) = self.get_color(agent.get_organism_size());
-                
-                let px_start = (x as f32 * scale_x) as u32;
-                let px_end = ((x + 1) as f32 * scale_x) as u32;
-                let py_start = (y as f32 * scale_y) as u32;
-                let py_end = ((y + 1) as f32 * scale_y) as u32;
-                
-                for py in py_start..py_end.min(self.height) {
-                    for px in px_start..px_end.min(self.width) {
-                        let pixel_idx = ((py * self.width + px) * 4) as usize;
-                        buffer[pixel_idx] = r;
-                        buffer[pixel_idx + 1] = g;
-                        buffer[pixel_idx + 2] = b;
-                        buffer[pixel_idx + 3] = 255; // Alpha
-                    }
-                }
-            }
-        }
-        
-        buffer
-    }
-    
-    fn get_color(&self, organism_size: u32) -> (u8, u8, u8) {
-        match organism_size {
-            1 => (158, 1, 66),
-            2 => (213, 62, 79),
-            3 => (244, 109, 67),
-            4 => (253, 174, 97),
-            5 => (254, 224, 139),
-            6 => (230, 245, 152),
-            7 => (171, 221, 164),
-            8 => (102, 194, 165),
-            9 => (50, 136, 189),
-            10 => (94, 79, 162),
-            _ => (140, 81, 255),
-        }
     }
 }
