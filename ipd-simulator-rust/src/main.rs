@@ -140,7 +140,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         
         // Calculate statistics
         let stats_start = Instant::now();
-        let stats = grid.get_statistics();
+        let mut stats = grid.get_statistics();
+        stats.pass_stats = grid.pass_stats.clone();
         total_stats_time += stats_start.elapsed();
         
         // Export data
