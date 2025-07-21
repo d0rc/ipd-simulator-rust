@@ -71,6 +71,10 @@ struct Args {
     /// Number of threads (0 = auto)
     #[arg(long, default_value_t = 0)]
     threads: usize,
+
+    /// Print pass statistics for each timestep
+    #[arg(long)]
+    print_pass_stats: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -180,6 +184,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             info!(
                 "Pass Stats: Interactions: {} | Updates: {} | Cache: {}us | Gen: {}us | Proc: {}us | Update: {}us | Deferred: {}us",
+                stats.pass_stats.num_interactions,
+                stats.pass_stats.num_updates,
+                stats.pass_stats.cache_update_time,
+                stats.pass_stats.interaction_generation_time,
+                stats.pass_stats.interaction_processing_time,
+                stats.pass_stats.state_update_time,
+                stats.pass_stats.deferred_op_time
+            );
+        }
+
+        if args.print_pass_stats {
+            println!(
+                "{},{},{},{},{},{},{},{}",
+                timestep,
                 stats.pass_stats.num_interactions,
                 stats.pass_stats.num_updates,
                 stats.pass_stats.cache_update_time,
