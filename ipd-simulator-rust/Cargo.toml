@@ -12,6 +12,7 @@ crossbeam = "0.8"
 bitvec = "1.0"
 rustc-hash = "1.1"  # Faster hasher than default
 lru = "0.12"
+cht = "0.5.0"
 
 # Random number generation
 rand = "0.8"

@@ -2,9 +2,8 @@ use crate::agent::{Agent, Action, CompactPolicy, DeferredOp};
 use bitvec::prelude::*;
 use crossbeam::queue::ArrayQueue;
 use rayon::prelude::*;
-use std::sync::{Arc, Mutex};
-use lru::LruCache;
-use std::num::NonZeroUsize;
+use std::sync::Arc;
+use cht::HashMap;
 use std::time::Instant;
 
 /// A single interaction between two agents
@@ -61,28 +60,35 @@ impl PayoffTable {
     }
 }
 
-/// Shared policy table with LRU eviction
+/// Shared policy table with lock-free concurrent hash map
 pub struct PolicyTable {
-    policies: Arc<Mutex<LruCache<u64, CompactPolicy>>>,
+    policies: HashMap<u64, CompactPolicy>,
 }
 
 impl PolicyTable {
-    pub fn new(capacity: usize) -> Self {
+    pub fn new(_capacity: usize) -> Self {
         Self {
-            policies: Arc::new(Mutex::new(LruCache::new(
-                NonZeroUsize::new(capacity).unwrap()
-            ))),
+            policies: HashMap::new(),
         }
     }
     
     pub fn get_or_create(&self, state_hash: u64) -> CompactPolicy {
-        let mut cache = self.policies.lock().unwrap();
-        cache.get_or_insert(state_hash, || CompactPolicy::new()).clone()
+        loop {
+            if let Some(policy) = self.policies.get(&state_hash) {
+                return policy.clone();
+            }
+            
+            let new_policy = CompactPolicy::new();
+            self.policies.insert(state_hash, new_policy.clone());
+            
+            if let Some(policy) = self.policies.get(&state_hash) {
+                return policy.clone();
+            }
+        }
     }
     
     pub fn update(&self, state_hash: u64, policy: CompactPolicy) {
-        let mut cache = self.policies.lock().unwrap();
-        cache.put(state_hash, policy);
+        self.policies.insert(state_hash, policy);
     }
 }
 
@@ -135,14 +141,13 @@ impl Grid {
         }
     }
     
-    /// Get neighbors for an agent (8-connected)
+    /// Get neighbors for an agent (8-connected), writing into a pre-allocated buffer.
     #[inline]
-    pub fn get_neighbors(&self, idx: usize) -> Vec<usize> {
+    pub fn get_neighbors(&self, idx: usize, neighbors: &mut Vec<usize>) {
+        neighbors.clear();
         let x = idx % self.grid_width;
         let y = idx / self.grid_width;
-        let mut neighbors = Vec::with_capacity(8);
-        
-        // Use branchless neighbor calculation
+
         for dy in -1i32..=1 {
             for dx in -1i32..=1 {
                 if dx == 0 && dy == 0 { continue; }
@@ -156,8 +161,6 @@ impl Grid {
                 }
             }
         }
-        
-        neighbors
     }
     
     /// Find the root agent (following child links)
@@ -173,17 +176,19 @@ impl Grid {
     
     /// Generate all interactions for a timestep
     fn generate_interactions(&self) -> Vec<Interaction> {
-        (0..self.grid_width * self.grid_height)
+        let active_indices: Vec<_> = self.active_mask.iter_ones().collect();
+        
+        active_indices
             .into_par_iter()
-            .filter(|&idx| self.active_mask[idx])
-            .flat_map(|idx| {
-                let agent_idx = self.root_cache[idx] as u32;
-                let neighbors = self.get_neighbors(idx);
+            .flat_map_iter(|idx| {
+                let mut neighbors = Vec::with_capacity(8);
+                self.get_neighbors(idx, &mut neighbors);
                 
                 if neighbors.is_empty() {
                     return Vec::new();
                 }
                 
+                let agent_idx = self.root_cache[idx] as u32;
                 let opp_idx = neighbors[rand::random::<usize>() % neighbors.len()];
                 let opp_root = self.root_cache[opp_idx] as u32;
                 
@@ -283,25 +288,17 @@ impl Grid {
 
     /// Apply state updates to agents
     fn apply_state_updates(&mut self, updates: &[StateUpdate]) {
-        // Group updates by agent ID
-        let mut updates_by_agent: Vec<Vec<StateUpdate>> = vec![Vec::new(); self.agents.len()];
-        for update in updates {
-            updates_by_agent[update.agent_idx as usize].push(*update);
-        }
-
-        // Process updates in parallel for each agent
-        self.agents
-            .par_iter_mut()
-            .zip(updates_by_agent.par_iter())
-            .for_each(|(agent, updates)| {
-                for update in updates {
-                    agent.fitness += update.fitness_delta;
-                    agent.last_action = update.action as u8;
-                    
-                    let new_policy = CompactPolicy { q_values: update.new_q_values };
-                    self.policy_table.update(update.policy_hash, new_policy);
-                }
-            });
+        // This approach assumes that multiple updates to the same agent are rare
+        // and can be processed sequentially without significant contention.
+        // For high-contention scenarios, a parallel-friendly approach would be needed.
+        updates.iter().for_each(|update| {
+            let agent = &mut self.agents[update.agent_idx as usize];
+            agent.fitness += update.fitness_delta;
+            agent.last_action = update.action as u8;
+            
+            let new_policy = CompactPolicy { q_values: update.new_q_values };
+            self.policy_table.update(update.policy_hash, new_policy);
+        });
     }
     
     /// Run one timestep of the simulation
