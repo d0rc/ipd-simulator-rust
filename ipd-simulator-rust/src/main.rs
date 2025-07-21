@@ -32,10 +32,6 @@ struct Args {
     #[arg(short = 't', long, default_value_t = 1000)]
     timesteps: usize,
     
-    /// Chunk size for parallel processing
-    #[arg(short = 'c', long, default_value_t = 16)]
-    chunk_size: usize,
-    
     /// Output video file path
     #[arg(short = 'o', long, default_value = "output.mp4")]
     output_video: PathBuf,
@@ -94,10 +90,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("IPD Simulator - High Performance Edition");
     info!("Grid size: {}x{} ({} agents)", args.width, args.height, args.width * args.height);
     info!("Timesteps: {}", args.timesteps);
-    info!("Chunk size: {}x{}", args.chunk_size, args.chunk_size);
     
     // Initialize grid
-    let mut grid = Grid::new(args.width, args.height, args.chunk_size);
+    let mut grid = Grid::new(args.width, args.height);
     grid.alpha = args.alpha;
     grid.gamma = args.gamma;
     grid.epsilon = args.epsilon;
@@ -182,6 +177,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 total_stats_time.as_secs_f64(),
                 total_export_time.as_secs_f64()
             );
+            info!(
+                "Pass Stats: Interactions: {} | Updates: {} | Cache: {}us | Gen: {}us | Proc: {}us | Update: {}us | Deferred: {}us",
+                stats.pass_stats.num_interactions,
+                stats.pass_stats.num_updates,
+                stats.pass_stats.cache_update_time,
+                stats.pass_stats.interaction_generation_time,
+                stats.pass_stats.interaction_processing_time,
+                stats.pass_stats.state_update_time,
+                stats.pass_stats.deferred_op_time
+            );
         }
     }
     
@@ -223,7 +228,7 @@ mod tests {
     
     #[test]
     fn test_small_grid() {
-        let mut grid = Grid::new(10, 10, 10);
+        let mut grid = Grid::new(10, 10);
         
         // Run a few steps
         for _ in 0..10 {
@@ -235,7 +240,7 @@ mod tests {
     
     #[test]
     fn test_large_grid_creation() {
-        let grid = Grid::new(1000, 1000, 100);
+        let grid = Grid::new(1000, 1000);
         assert_eq!(grid.agents.len(), 1_000_000);
     }
 }

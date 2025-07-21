@@ -149,12 +149,21 @@ impl CompactPolicy {
         }
     }
     
-    /// Update Q-value using TD learning
-    pub fn update(&mut self, action: Action, reward: f32, next_max_q: f32, alpha: f32, gamma: f32) {
+    /// Calculate an updated Q-value array using TD learning
+    pub fn calculate_updated_q_values(
+        &self,
+        action: Action,
+        reward: f32,
+        next_max_q: f32,
+        alpha: f32,
+        gamma: f32,
+    ) -> [f32; 4] {
+        let mut new_q = self.q_values;
         let idx = action as usize;
         let td_target = reward + gamma * next_max_q;
-        let td_error = td_target - self.q_values[idx];
-        self.q_values[idx] += alpha * td_error;
+        let td_error = td_target - new_q[idx];
+        new_q[idx] += alpha * td_error;
+        new_q
     }
 }
 
