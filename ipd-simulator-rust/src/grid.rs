@@ -5,6 +5,10 @@ use rayon::prelude::*;
 use std::sync::Arc;
 use cht::HashMap;
 use std::time::Instant;
+use std::cell::RefCell;
+use rand::Rng;
+
+thread_local!(static NEIGHBOR_BUFFER: RefCell<Vec<usize>> = RefCell::new(Vec::with_capacity(8)));
 
 /// A single interaction between two agents
 #[derive(Debug, Clone, Copy)]
@@ -181,22 +185,24 @@ impl Grid {
         active_indices
             .into_par_iter()
             .flat_map_iter(|idx| {
-                let mut neighbors = Vec::with_capacity(8);
-                self.get_neighbors(idx, &mut neighbors);
-                
-                if neighbors.is_empty() {
-                    return Vec::new();
-                }
-                
-                let agent_idx = self.root_cache[idx] as u32;
-                let opp_idx = neighbors[rand::random::<usize>() % neighbors.len()];
-                let opp_root = self.root_cache[opp_idx] as u32;
-                
-                if opp_root != agent_idx {
-                    vec![Interaction { agent1_idx: agent_idx, agent2_idx: opp_root }]
-                } else {
-                    Vec::new()
-                }
+                NEIGHBOR_BUFFER.with(|cell| {
+                    let mut neighbors = cell.borrow_mut();
+                    self.get_neighbors(idx, &mut neighbors);
+
+                    if neighbors.is_empty() {
+                        return Vec::new();
+                    }
+
+                    let agent_idx = self.root_cache[idx] as u32;
+                    let opp_idx = neighbors[rand::thread_rng().gen_range(0..neighbors.len())];
+                    let opp_root = self.root_cache[opp_idx] as u32;
+
+                    if opp_root != agent_idx {
+                        vec![Interaction { agent1_idx: agent_idx, agent2_idx: opp_root }]
+                    } else {
+                        Vec::new()
+                    }
+                })
             })
             .collect()
     }
