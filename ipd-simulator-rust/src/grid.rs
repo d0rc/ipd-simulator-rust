@@ -358,7 +358,10 @@ impl Grid {
     
     /// Apply merge and split operations in parallel
     fn apply_deferred_operations_parallel(&mut self) {
-        let ops: Vec<_> = self.deferred_ops.try_iter().collect();
+        let mut ops = Vec::new();
+        while let Some(op) = self.deferred_ops.pop() {
+            ops.push(op);
+        }
 
         let next_agent_id = AtomicU32::new(self.agents.len() as u32);
 
