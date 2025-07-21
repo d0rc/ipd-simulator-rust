@@ -42,12 +42,13 @@ pub struct Agent {
     pub q_values: [f32; 8],  // Current Q-values for C,D,M,S with current state
     pub policy_hash: u64,    // Hash of current memory state
     pub epsilon: f32,        // Exploration rate
-    pub _padding2: [u8; 4],
+    pub id: u32,
 }
 
 impl Agent {
-    pub fn new(_id: u32) -> Self {
+    pub fn new(id: u32) -> Self {
         Self {
+            id,
             fitness: 0.001,
             memory_bits: 0,
             mem_length: (rand::random::<u8>() % 5) + 1, // 1-5
@@ -62,7 +63,6 @@ impl Agent {
             q_values: [0.1; 8],
             policy_hash: 0,
             epsilon: 0.1,
-            _padding2: [0; 4],
         }
     }
     

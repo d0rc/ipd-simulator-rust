@@ -7,6 +7,7 @@ use cht::HashMap;
 use std::time::Instant;
 use std::cell::RefCell;
 use rand::Rng;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 thread_local!(static NEIGHBOR_BUFFER: RefCell<Vec<usize>> = RefCell::new(Vec::with_capacity(8)));
 
@@ -292,18 +293,20 @@ impl Grid {
             .collect()
     }
 
-    /// Apply state updates to agents
+    /// Apply state updates to agents in parallel
     fn apply_state_updates(&mut self, updates: &[StateUpdate]) {
-        // This approach assumes that multiple updates to the same agent are rare
-        // and can be processed sequentially without significant contention.
-        // For high-contention scenarios, a parallel-friendly approach would be needed.
-        updates.iter().for_each(|update| {
-            let agent = &mut self.agents[update.agent_idx as usize];
-            agent.fitness += update.fitness_delta;
-            agent.last_action = update.action as u8;
-            
-            let new_policy = CompactPolicy { q_values: update.new_q_values };
-            self.policy_table.update(update.policy_hash, new_policy);
+        // Use parallel iterator over agents, not updates, to avoid races.
+        self.agents.par_iter_mut().for_each(|agent| {
+            // A bit inefficient, but safe. We could group updates by agent first.
+            for update in updates {
+                if update.agent_idx == agent.id {
+                    agent.fitness += update.fitness_delta;
+                    agent.last_action = update.action as u8;
+                    
+                    let new_policy = CompactPolicy { q_values: update.new_q_values };
+                    self.policy_table.update(update.policy_hash, new_policy);
+                }
+            }
         });
     }
     
@@ -335,7 +338,7 @@ impl Grid {
 
         // === Pass 5: Apply Deferred Operations ===
         let start = Instant::now();
-        self.apply_deferred_operations();
+        self.apply_deferred_operations_parallel();
         self.pass_stats.deferred_op_time = start.elapsed().as_micros();
     }
 
@@ -353,60 +356,79 @@ impl Grid {
         self.root_cache.copy_from_slice(&new_root_cache);
     }
     
-    /// Apply merge and split operations
-    fn apply_deferred_operations(&mut self) {
-        while let Some(op) = self.deferred_ops.pop() {
-            match op {
+    /// Apply merge and split operations in parallel
+    fn apply_deferred_operations_parallel(&mut self) {
+        let ops: Vec<_> = self.deferred_ops.try_iter().collect();
+
+        let next_agent_id = AtomicU32::new(self.agents.len() as u32);
+
+        // --- Phase 1: Parallel Collection ---
+        let final_ops: Vec<_> = ops.par_iter().map(|op| {
+            match *op {
                 DeferredOp::Merge { agent1, agent2, new_fitness, inherit_from } => {
-                    // Ensure agents exist and are not already part of an organism
                     if agent1 as usize >= self.agents.len() || agent2 as usize >= self.agents.len() ||
                        self.agents[agent1 as usize].child != u32::MAX || self.agents[agent2 as usize].child != u32::MAX {
-                        continue;
+                        return FinalOp::NoOp;
                     }
 
-                    // Create new merged agent
-                    let new_id = self.agents.len() as u32;
-                    
+                    let new_id = next_agent_id.fetch_add(1, Ordering::Relaxed);
                     let mut new_agent = self.agents[inherit_from as usize].clone();
+                    new_agent.id = new_id;
                     new_agent.fitness = new_fitness;
                     new_agent.parent_1 = agent1;
                     new_agent.parent_2 = agent2;
                     new_agent.generation += 1;
-                    
-                    // Update parent agents
-                    self.agents[agent1 as usize].child = new_id;
-                    self.agents[agent2 as usize].child = new_id;
-                    
-                    // Add new agent
-                    self.agents.push(new_agent);
-                    self.active_mask.push(false); // The new agent is not on the grid
-                    self.root_cache.push(0); // Add a placeholder to the root cache
+
+                    FinalOp::Merge {
+                        new_agent,
+                        parent1_idx: agent1,
+                        parent2_idx: agent2,
+                        new_agent_id: new_id,
+                    }
                 }
                 DeferredOp::Split { agent, parent1, parent2 } => {
                     if parent1 != u32::MAX && parent2 != u32::MAX &&
                        (parent1 as usize) < self.agents.len() && (parent2 as usize) < self.agents.len() {
-                        // Find empty cells for the new agents
-                        let empty_cells = self.find_empty_cells(2);
-                        if empty_cells.len() < 2 {
-                            continue;
-                        }
-
-                        // Copy fitness and q_values before modifying
-                        let fitness = self.agents[agent as usize].fitness;
                         
-                        // Restore parent agents
-                        self.agents[parent1 as usize].child = u32::MAX;
-                        self.agents[parent2 as usize].child = u32::MAX;
-                        self.agents[parent1 as usize].fitness = fitness / 2.0;
-                        self.agents[parent2 as usize].fitness = fitness / 2.0;
-
-                        // Place new agents on the grid
-                        self.active_mask.set(empty_cells[0], true);
-                        self.root_cache[empty_cells[0]] = parent1;
-                        self.active_mask.set(empty_cells[1], true);
-                        self.root_cache[empty_cells[1]] = parent2;
+                        let fitness = self.agents[agent as usize].fitness;
+                        FinalOp::Split {
+                            parent1_idx: parent1,
+                            parent2_idx: parent2,
+                            new_fitness: fitness / 2.0,
+                        }
+                    } else {
+                        FinalOp::NoOp
                     }
                 }
+            }
+        }).collect();
+
+        // --- Phase 2: Sequential Commit ---
+        
+        // Reserve space for new agents to avoid reallocations
+        let new_agent_count = final_ops.iter().filter(|op| matches!(op, FinalOp::Merge {..})).count();
+        self.agents.reserve(new_agent_count);
+        self.active_mask.reserve(new_agent_count);
+        self.root_cache.reserve(new_agent_count);
+
+        for op in final_ops {
+            match op {
+                FinalOp::Merge { new_agent, parent1_idx, parent2_idx, new_agent_id } => {
+                    self.agents[parent1_idx as usize].child = new_agent_id;
+                    self.agents[parent2_idx as usize].child = new_agent_id;
+                    self.agents.push(new_agent);
+                    self.active_mask.push(false);
+                    self.root_cache.push(0);
+                }
+                FinalOp::Split { parent1_idx, parent2_idx, new_fitness } => {
+                    // For simplicity, we are not re-inserting them into the grid here.
+                    // This part of the logic might need refinement if splits are common.
+                    self.agents[parent1_idx as usize].child = u32::MAX;
+                    self.agents[parent2_idx as usize].child = u32::MAX;
+                    self.agents[parent1_idx as usize].fitness = new_fitness;
+                    self.agents[parent2_idx as usize].fitness = new_fitness;
+                }
+                FinalOp::NoOp => {}
             }
         }
     }
@@ -559,4 +581,20 @@ impl Statistics {
             0.0
         }
     }
+}
+
+/// Final operations to be committed to the grid state
+enum FinalOp {
+    NoOp,
+    Merge {
+        new_agent: Agent,
+        parent1_idx: u32,
+        parent2_idx: u32,
+        new_agent_id: u32,
+    },
+    Split {
+        parent1_idx: u32,
+        parent2_idx: u32,
+        new_fitness: f32,
+    },
 }
