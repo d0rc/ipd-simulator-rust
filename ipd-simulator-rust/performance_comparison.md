@@ -21,22 +21,21 @@ This document compares the performance between the original JavaScript implement
 - **Rust**: Optimized bit vectors, lock-free queues, LRU cache for policies
 - **Improvement**: ~5x faster lookups and updates
 
-## Performance Benchmarks
+## Performance Benchmarks (July 2025)
 
-### Small Grid (50x50, 100 timesteps)
-- **JavaScript**: ~0.2 FPS (500+ seconds)
-- **Rust**: 83.52 FPS (1.2 seconds)
-- **Speedup**: 417x
+The latest benchmarks demonstrate significant performance gains, allowing for much larger and longer simulations.
 
-### Medium Grid (100x100, 100 timesteps)
-- **JavaScript**: Not feasible (would take hours)
-- **Rust**: 4.29 FPS with video generation (23.31 seconds)
-- **Speedup**: Enables real-time visualization
+| Test Case                  | Dimensions      | Timesteps | Total Time | Avg. FPS |
+| -------------------------- | --------------- | --------- | ---------- | -------- |
+| **Small Grid**             | 50x50           | 1,000     | 2.19s      | 509.36   |
+| **Medium Grid**            | 200x200         | 1,000     | 18.24s     | 54.88    |
+| **Large Grid**             | 500x500         | 500       | 1m 1.52s   | 8.13     |
+| **Very Large Grid**        | 1000x1000       | 200       | 1m 47.09s  | 1.87     |
 
-### Performance Breakdown (100x100 grid):
-- Simulation: 66.2% of time (15.42s)
-- Video Export: 33.7% of time (7.87s)
-- Statistics: 0.1% of time (0.02s)
+### Performance Breakdown (1,000,000 agents):
+- Simulation: 99.1% of time (106.05s)
+- Statistics: 0.9% of time (0.98s)
+- Export: 0.0% of time
 
 ### Asynchronous Video Performance:
 - Initial implementation: 67.3% export overhead

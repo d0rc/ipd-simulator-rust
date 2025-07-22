@@ -2,8 +2,9 @@ use crate::agent::{Agent, Action, CompactPolicy, DeferredOp};
 use bitvec::prelude::*;
 use crossbeam::queue::ArrayQueue;
 use rayon::prelude::*;
+use std::collections::HashMap;
 use std::sync::Arc;
-use cht::HashMap;
+use cht::HashMap as ChtHashMap;
 use std::time::Instant;
 use std::cell::RefCell;
 use rand::Rng;
@@ -67,13 +68,13 @@ impl PayoffTable {
 
 /// Shared policy table with lock-free concurrent hash map
 pub struct PolicyTable {
-    policies: HashMap<u64, CompactPolicy>,
+    policies: ChtHashMap<u64, CompactPolicy>,
 }
 
 impl PolicyTable {
     pub fn new(_capacity: usize) -> Self {
         Self {
-            policies: HashMap::new(),
+            policies: ChtHashMap::new(),
         }
     }
     
@@ -293,14 +294,21 @@ impl Grid {
 
     /// Apply state updates to agents in parallel
     fn apply_state_updates(&mut self, updates: &[StateUpdate]) {
-        // Use parallel iterator over agents, not updates, to avoid races.
+        // Group updates by agent index for efficient lookup.
+        let mut updates_by_agent: HashMap<u32, Vec<StateUpdate>> = HashMap::new();
+        for update in updates {
+            updates_by_agent.entry(update.agent_idx).or_default().push(*update);
+        }
+
+        // Use parallel iterator over agents for the update process.
         self.agents.par_iter_mut().for_each(|agent| {
-            // A bit inefficient, but safe. We could group updates by agent first.
-            for update in updates {
-                if update.agent_idx == agent.id {
+            if let Some(agent_updates) = updates_by_agent.get(&agent.id) {
+                for update in agent_updates {
                     agent.fitness += update.fitness_delta;
                     agent.last_action = update.action as u8;
                     
+                    // The policy table update needs to be handled carefully
+                    // as it's a shared resource.
                     let new_policy = CompactPolicy { q_values: update.new_q_values };
                     self.policy_table.update(update.policy_hash, new_policy);
                 }
